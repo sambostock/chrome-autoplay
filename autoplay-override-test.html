@@ -1,0 +1,101 @@
+<html>
+  <head>
+    <style>
+      table, th, td {
+        border: 1px solid black;
+          padding: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Autoplay Test</h1>
+
+    <p>
+      This page will automatically try to play audio at the following times:
+    </p>
+
+    <ul>
+      <li>on page load</li>
+      <li>on click</li>
+      <li>on an ever increasing interval</li>
+    </ul>
+
+    <p>
+      Every time it tries to play the ringer audio, it will also try to play a file containing 15 seconds of silence, to try to increase the Media Engagement Index. It will then record the attempt in the following table:
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Relative Time</th>
+          <th>Exact Time</th>
+          <th>Trigger</th>
+          <th><code>AudioContext#state</code></th>
+          <th><code>Audio#play (ringer)</code></th>
+          <th><code>Audio#play (silence)</code></th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+      </tbody>
+    </table>
+
+    <p>
+      Note that a <code>Audio#play</code> result of <code>undefined</code> should signify a successful play.
+    </p>
+
+    <script>
+      const INCOMING_RING_URL = 'https://media.twiliocdn.com/sdk/js/client/sounds/releases/1.0.0/incoming.mp3';
+      // const FIFTEEN_SECONDS_OF_SILENCE = 'https://raw.githubusercontent.com/anars/blank-audio/master/15-seconds-of-silence.mp3';
+      const FIFTEEN_SECONDS_OF_SILENCE = './15-seconds-of-silence.mp3';
+
+      function appendResult(entries) {
+        const row = document.createElement('tr');
+        entries.forEach(content =>
+          row.appendChild(document.createElement('td')).appendChild(document.createTextNode(content))
+        );
+        document.getElementById('table-body').appendChild(row);
+      }
+
+      function tryPlay(trigger) {
+        const relativeTime = timeRelativeToLoad();
+        const time = new Date().toString();
+        const audioContextState = new AudioContext().state;
+        new Audio(INCOMING_RING_URL).play()
+          .catch(e => e )
+          .then(playResult => {
+            new Audio(FIFTEEN_SECONDS_OF_SILENCE).play().catch(e2 => e2)
+              .then(playResult2 => {
+                appendResult([relativeTime, time, trigger, audioContextState, playResult, playResult2]);
+              })
+          });
+      }
+
+      const loadTime = new Date();
+      function timeRelativeToLoad() {
+        const totalSeconds = (new Date() - loadTime) / 1000;
+
+        const hours = Math.floor(totalSeconds / 3600 )
+        const remainingSeconds = totalSeconds % 3600
+
+        const minutes = Math.floor(remainingSeconds / 60)
+        const seconds = remainingSeconds % 60
+
+        return `T+${hours}h${minutes}m${seconds}s`
+      }
+
+      function setExponentialTimeout(fn, delay) {
+        setTimeout(
+          () => {
+            fn();
+            setExponentialTimeout(fn, delay * 2);
+          },
+          delay,
+        );
+      }
+
+      setExponentialTimeout(() => tryPlay('on schedule'), 1000)
+      document.addEventListener('click', () => tryPlay('on click'));
+      tryPlay('on page load');
+    </script>
+  </body>
+</html>
